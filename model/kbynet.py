@@ -292,7 +292,66 @@ class YOLO(torch.nn.Module):
 
 
 
+class YOLO2(torch.nn.Module):
+    def __init__(self, width, depth, num_classes):
+        super().__init__()
+        self.net = DarkNet2(width, depth)
+        self.fpn = DarkFPN2(width, depth)
+
+        img_dummy = torch.zeros(1, 3, 256, 256)
+        self.head = Head(num_classes, (width[3], width[4], width[5]))
+        self.head.stride = torch.tensor([256 / x.shape[-2] for x in self.forward(img_dummy)])
+        self.stride = self.head.stride
+        self.head.initialize_biases()
+
+    def forward(self, x):
+        x = self.net(x)
+        x = self.fpn(x)
+        return self.head(list(x))
 
 
+class DarkNet2(torch.nn.Module):
+    def __init__(self, width, depth):
+        super().__init__()
+        p1 = [Conv(width[0], width[1], 3, 2)]
+        p2 = [Conv(width[1], width[2], 3, 2),
+              CSP(width[2], width[2], depth[0])]
+        p3 = [Conv(width[2], width[3], 3, 2),
+              CSP(width[3], width[3], depth[1])]
+        p4 = [Conv(width[3], width[4], 3, 2),
+              CSP(width[4], width[4], depth[2])]
+        p5 = [Conv(width[4], width[5], 3, 2),
+              CSP(width[5], width[5], depth[0]),
+              SPP(width[5], width[5])]
 
+        self.p1 = torch.nn.Sequential(*p1)
+        self.p2 = torch.nn.Sequential(*p2)
+        self.p3 = torch.nn.Sequential(*p3)
+        self.p4 = torch.nn.Sequential(*p4)
+        self.p5 = torch.nn.Sequential(*p5)
 
+    def forward(self, x):
+        p1 = self.p1(x)
+        p2 = self.p2(p1)
+        p3 = self.p3(p2)
+        p4 = self.p4(p3)
+        p5 = self.p5(p4)
+        return p3, p4, p5
+class DarkFPN2(torch.nn.Module):
+    def __init__(self, width, depth):
+        super().__init__()
+        self.up = torch.nn.Upsample(None, 2)
+        self.h1 = CSP(width[4] + width[5], width[4], depth[0], False)
+        self.h2 = CSP(width[3] + width[4], width[3], depth[0], False)
+        self.h3 = Conv(width[3], width[3], 3, 2)
+        self.h4 = CSP(width[3] + width[4], width[4], depth[0], False)
+        self.h5 = Conv(width[4], width[4], 3, 2)
+        self.h6 = CSP(width[4] + width[5], width[5], depth[0], False)
+
+    def forward(self, x):
+        p3, p4, p5 = x
+        h1 = self.h1(torch.cat([self.up(p5), p4], 1))
+        h2 = self.h2(torch.cat([self.up(h1), p3], 1))
+        h4 = self.h4(torch.cat([self.h3(h2), h1], 1))
+        h6 = self.h6(torch.cat([self.h5(h4), p5], 1))
+        return h2, h4, h6
