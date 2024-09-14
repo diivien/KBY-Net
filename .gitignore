@@ -1,3 +1,13 @@
 citydata/
 *.pt
 *.zip
+test_rainy/
+test_live.py
+test.mp4
+test2.mp4
+rain_test/
+rain_train/
+supp_images/
+supp_pdfs/
+pngtopdf.ipynb
+rain_kitti_split/
