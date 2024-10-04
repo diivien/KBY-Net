@@ -1,6 +1,8 @@
-# KBY-Net: Deep Image Restoration for Improving Object Detection
+# KBY-Net: A Dual Learning Framework for Improving Object Detection in Rainy Weather Conditions
 
 KBY-Net is a novel end-to-end Y-Net architecture built upon YOLOv8 that addresses the challenge of object detection in rainy weather conditions. It leverages multi-task learning for simultaneous image restoration and object detection.
+
+This paper has been accepted at ACM Multimedia Asia 2024!
 
 ## Table of Contents
 - [Abstract](#abstract)
